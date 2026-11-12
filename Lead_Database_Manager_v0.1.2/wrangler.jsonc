@@ -4,6 +4,7 @@
   "main": "./src/worker.js",
   "compatibility_date": "2026-11-12",
   "workers_dev": true,
+  "keep_vars": true,
   "assets": {
     "directory": "./public/",
     "binding": "ASSETS",
@@ -11,6 +12,12 @@
       "/api/*"
     ]
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lead-database-manager-db"
+    }
+  ],
   "observability": {
     "enabled": true
   }

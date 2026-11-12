@@ -1,6 +1,6 @@
 # Архитектура Lead Database Manager
 
-**Версия документа:** 0.1.0 · **Дата проверки:** 12.11.2026
+**Версия документа:** 0.2.0 · **Дата проверки:** 12.11.2026
 
 ## 1. Целевая схема
 
@@ -67,7 +67,7 @@ sequenceDiagram
 
 ### 4.2. Ручное управление
 
-UI → Worker REST endpoint → валидатор → service/use-case → repository adapter → D1. Ответ API содержит единый формат `ok`, `data`, `error`, `meta` (будет формализован на этапе 2).
+UI → Worker REST endpoint → валидатор → service/use-case → repository adapter → D1. Ответ API содержит `ok`, `error`, `item` / `items`, `pagination` и прикладные метаданные.
 
 ## 5. Предполагаемое разбиение Worker на модули
 
@@ -101,4 +101,4 @@ erDiagram
   APP_USERS ||--o{ AUDIT_LOG : performs
 ```
 
-Справочная полная модель: `../migrations/FUTURE_SCHEMA.sql`. На этапе 1 реально создана только часть таблиц для Telegram proof-of-concept.
+Справочная полная модель: `../migrations/FUTURE_SCHEMA.sql`. В v0.2.0 созданы основные рабочие таблицы лидов, разделов, связей, аудита, поиска и очередей. Таблицы очереди и поиска пока являются схемой для следующих этапов.

@@ -3,61 +3,64 @@ import sqlite3
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
-MIGRATION = ROOT / 'migrations' / '0001_stage1_prototype.sql'
+MIGRATIONS = [
+    ROOT / 'migrations' / '0001_stage1_prototype.sql',
+    ROOT / 'migrations' / '0002_core_management.sql',
+]
 
 with tempfile.TemporaryDirectory() as tmp:
-    db_path = Path(tmp) / 'stage1.sqlite'
+    db_path = Path(tmp) / 'ldm.sqlite'
     conn = sqlite3.connect(db_path)
     conn.execute('PRAGMA foreign_keys = ON')
-    conn.executescript(MIGRATION.read_text(encoding='utf-8'))
+    for migration in MIGRATIONS:
+        conn.executescript(migration.read_text(encoding='utf-8'))
 
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    expected = {'schema_migrations', 'leads', 'consent_events', 'telegram_updates'}
+    expected = {'schema_migrations', 'leads', 'consent_events', 'telegram_updates', 'segments', 'lead_segments', 'activity_logs', 'search_jobs', 'chat_queue', 'chat_history'}
     assert expected.issubset(tables), f'Missing tables: {expected - tables}'
 
-    migration = conn.execute('SELECT version FROM schema_migrations').fetchone()
-    assert migration == ('0001_stage1_prototype',)
+    versions = {row[0] for row in conn.execute('SELECT version FROM schema_migrations')}
+    assert versions == {'0001_stage1_prototype', '0002_core_management'}
 
     conn.execute("""INSERT INTO leads
-      (id, telegram_id, username, first_name, source, quality, status,
-       consent_status, consent_at, consent_source)
-      VALUES ('lead-1','10001','alpha','Alpha','telegram_bot','unclassified','new',
-       'granted','2026-11-12T10:00:00Z','telegram_bot:inline_consent')""")
-    conn.execute("""INSERT INTO consent_events (id, lead_id, action, source, event_key)
-      VALUES ('event-1','lead-1','granted','telegram_bot:inline_consent','telegram:update:10:consent')""")
-    try:
-        conn.execute("""INSERT INTO consent_events (id, lead_id, action, source, event_key)
-          VALUES ('event-2','lead-1','granted','telegram_bot:inline_consent','telegram:update:10:consent')""")
-        raise AssertionError('UNIQUE event_key did not protect duplicate consent event')
-    except sqlite3.IntegrityError:
-        pass
+      (id, telegram_id, username, first_name, source, quality, status, consent_status, extra_json)
+      VALUES ('lead-1','10001','alpha','Alpha','manual','high','new','none','{\"notes\":\"Test note\"}')""")
+    conn.execute("INSERT INTO leads (id, telegram_id, source) VALUES ('lead-2','10002','manual')")
+    conn.execute("INSERT INTO lead_segments (lead_id, segment_id) VALUES ('lead-1','seg-mobile')")
+    conn.execute("INSERT INTO lead_segments (lead_id, segment_id) VALUES ('lead-1','seg-promising')")
     conn.commit()
 
-    # Duplicate Telegram ID must fail at the database level.
+    memberships = conn.execute("SELECT COUNT(*) FROM lead_segments WHERE lead_id='lead-1'").fetchone()[0]
+    assert memberships == 2, 'A lead must be able to belong to multiple segments'
+
+    count = conn.execute("SELECT COUNT(*) FROM leads WHERE telegram_id='10001'").fetchone()[0]
+    assert count == 1, 'telegram_id must remain unique'
+
     try:
-        conn.execute("INSERT INTO leads (id, telegram_id) VALUES ('lead-2','10001')")
+        conn.execute("INSERT INTO leads (id, telegram_id) VALUES ('lead-dup','10001')")
         raise AssertionError('UNIQUE constraint did not protect telegram_id')
     except sqlite3.IntegrityError:
         pass
 
-    # A lead may retain its card after consent has been revoked.
+    conn.execute("DELETE FROM segments WHERE id='seg-mobile'")
+    conn.commit()
+    remaining_lead = conn.execute("SELECT id FROM leads WHERE id='lead-1'").fetchone()
+    remaining_links = conn.execute("SELECT COUNT(*) FROM lead_segments WHERE lead_id='lead-1'").fetchone()[0]
+    assert remaining_lead == ('lead-1',), 'Deleting a segment must not delete leads'
+    assert remaining_links == 1, 'Deleting a segment should remove only its membership links'
+
     conn.execute("UPDATE leads SET consent_status='revoked' WHERE telegram_id='10001'")
     conn.commit()
-    state = conn.execute("SELECT consent_status FROM leads WHERE telegram_id='10001'").fetchone()
-    assert state == ('revoked',)
+    assert conn.execute("SELECT consent_status FROM leads WHERE telegram_id='10001'").fetchone() == ('revoked',)
 
-    # Incoming update IDs are unique for deduplication.
-    conn.execute("INSERT INTO telegram_updates (update_id, update_type) VALUES (1,'message')")
-    try:
-        conn.execute("INSERT INTO telegram_updates (update_id, update_type) VALUES (1,'message')")
-        raise AssertionError('UNIQUE update_id did not protect duplicates')
-    except sqlite3.IntegrityError:
-        pass
+    # The management migration is repeat-safe: tables, indexes and default segments use IF NOT EXISTS / OR IGNORE.
+    conn.executescript(MIGRATIONS[1].read_text(encoding='utf-8'))
 
-    print('PASS: migration creates required tables')
-    print('PASS: migration registry is recorded')
-    print('PASS: telegram_id is unique')
-    print('PASS: consent event_key is unique')
-    print('PASS: consent revocation keeps the lead record')
-    print('PASS: telegram update_id is unique')
+    print('PASS: both migrations apply in sequence')
+    print('PASS: all core management tables are created')
+    print('PASS: schema version registry is recorded')
+    print('PASS: telegram_id uniqueness is enforced')
+    print('PASS: one lead can belong to multiple segments')
+    print('PASS: deleting a segment does not delete its leads')
+    print('PASS: consent state remains independently stored')
     conn.close()

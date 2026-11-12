@@ -49,7 +49,7 @@ D1 single-threaded на одну базу; суммарную пропускну
 - **Локальный предпросмотр:** `START_HERE.html` открывается двойным щелчком в браузере. Не требует Node.js, Python, Docker, Wrangler, Git или локального сервера. В этом режиме показывается интерфейс, а реальные подключения честно помечаются как недоступные.
 - **Полная публикация:** пользователь работает через сайт GitHub и Cloudflare Dashboard. Репозиторий подключается к Cloudflare Workers Builds; облачная сборочная среда устанавливает/запускает Wrangler сама. Никакие инструменты разработки на пользовательский ПК не устанавливаются.
 
-Для конфигурации через GitHub Web Editor нужно заменить `REPLACE_WITH_D1_DATABASE_ID` в `wrangler.jsonc` на ID созданной D1-базы. Если Cloudflare Dashboard просит build command для Workers Build, используется `npm run deploy`; выполнение происходит в облачной среде Cloudflare, а не на ПК пользователя. SQL миграция применяется копированием содержимого `migrations/0001_stage1_prototype.sql` в D1 → SQL Console.
+В v0.2.0 D1 binding объявлен непосредственно в `wrangler.jsonc` и использует автоматическое provisioning по `database_name`; Cloudflare создаёт ресурс при публикации, если база ещё не существует. Для управления уже существующей D1 потребуется её реальный `database_id`. SQL-миграции выполняются через D1 → SQL Console копированием файлов `0001` и `0002`.
 
 Сценарий с локальным терминалом/Wrangler не является обязательным и в пользовательских инструкциях не предлагается.
 
@@ -63,7 +63,7 @@ D1 single-threaded на одну базу; суммарную пропускну
 2. Нажать **Add binding**.
 3. Выбрать **D1 database**.
 4. Variable name: `DB`.
-5. Выбрать базу `lead-database-manager`.
+5. Выбрать базу `lead-database-manager-db` (если она уже создана вручную; в штатной v0.2.0 она создаётся из Wrangler config).
 6. Сохранить и повторно развернуть Worker.
 
 ## 6. Secrets
@@ -78,23 +78,32 @@ D1 single-threaded на одну базу; суммарную пропускну
 
 Не создавайте обычные переменные для секретных значений и не передавайте bot token браузеру.
 
-## 7. Применение первой миграции
+## 7. Применение миграций v0.2.0
 
 1. Открыть Cloudflare Dashboard → **Storage & databases** → **D1 SQL Database**.
 2. Открыть `lead-database-manager`.
 3. Открыть SQL Console.
-4. Скопировать и выполнить целиком файл `migrations/0001_stage1_prototype.sql`.
-5. В списке таблиц должны появиться `leads`, `consent_events`, `telegram_updates`, `schema_migrations`.
-6. В `schema_migrations` должна быть строка `0001_stage1_prototype`.
+4. Выполнить `migrations/0001_stage1_prototype.sql`.
+5. Затем выполнить `migrations/0002_core_management.sql`.
+6. В `schema_migrations` должны быть строки `0001_stage1_prototype` и `0002_core_management`.
 
 Не запускать `docs/FUTURE_SCHEMA.sql` — это справочная схема, не миграция. В папке `migrations/` оставлены только пронумерованные файлы, предназначенные для миграционного механизма.
 
-## 8. Прототип endpoint-ов
+## 8. Основные endpoint-ы v0.2.0
 
 | Метод | Путь | Назначение |
 |---|---|---|
-| GET | `/api/health` | Проверка Worker, binding D1 и настроек Telegram |
-| POST | `/api/setup/telegram-webhook` | Проверка SETUP_TOKEN и регистрация webhook через Telegram `getMe` + `setWebhook` |
+| GET | `/api/health` | Публичная диагностика Worker, D1 и интеграций |
+| POST | `/api/auth/verify` | Проверка ADMIN_TOKEN |
+| GET | `/api/dashboard` | Сводные показатели; требует ADMIN_TOKEN |
+| GET / POST | `/api/leads` | Серверный список / создание лида |
+| GET / PATCH / DELETE | `/api/leads/:id` | Карточка, обновление и удаление |
+| POST | `/api/leads/bulk` | Массовые действия |
+| GET / POST | `/api/segments` | Список / создание разделов |
+| PATCH / DELETE | `/api/segments/:id` | Переименование / удаление |
+| POST | `/api/segments/:id/members` | Добавление или удаление лидов в разделе |
+| GET | `/api/activity` | Журнал операций |
+| POST | `/api/setup/telegram-webhook` | Регистрация webhook через Telegram `getMe` + `setWebhook` |
 | POST | `/api/telegram/webhook` | Получение Telegram updates; требует секретный заголовок Telegram |
 
 ## 9. Официальные источники
