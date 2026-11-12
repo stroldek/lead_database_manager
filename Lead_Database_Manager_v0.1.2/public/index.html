@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Lead Database Manager</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><span></span><span></span><span></span></div>
+        <div><strong>Lead Database</strong><small>MANAGER · 0.1.2</small></div>
+      </div>
+      <div class="nav-label">РАБОЧАЯ ОБЛАСТЬ</div>
+      <a class="nav-item active" href="#overview"><span class="nav-icon">◫</span> Обзор</a>
+      <a class="nav-item disabled" aria-disabled="true"><span class="nav-icon">▤</span> База лидов <em>этап 5</em></a>
+      <a class="nav-item disabled" aria-disabled="true"><span class="nav-icon">▦</span> Разделы <em>этап 6</em></a>
+      <div class="nav-label nav-label-gap">ИНТЕГРАЦИИ</div>
+      <a class="nav-item active-soft" href="#telegram"><span class="nav-icon">✳</span> Telegram</a>
+      <a class="nav-item disabled" aria-disabled="true"><span class="nav-icon">↗</span> Авто-чат <em>этап 9</em></a>
+      <a class="nav-item disabled" aria-disabled="true"><span class="nav-icon">⇩</span> Импорт / экспорт <em>этап 7</em></a>
+      <div class="sidebar-bottom">
+        <div class="side-status"><i></i><span>Технический прототип</span></div>
+        <small>Локальная версия интерфейса</small>
+      </div>
+    </aside>
+
+    <main class="main" id="overview">
+      <header class="topbar">
+        <div><div class="eyebrow">СИСТЕМА УПРАВЛЕНИЯ ЛИДАМИ</div><h1>Технический обзор</h1></div>
+        <div class="top-actions"><span class="version-chip">v0.1.2</span><button class="button button-quiet" id="refreshButton" type="button">↻ <span>Проверить</span></button></div>
+      </header>
+
+      <section class="intro-card">
+        <div class="intro-copy"><div class="eyebrow accent">ЭТАП 1 / 12</div><h2>Фундамент системы</h2><p>Проверка инфраструктуры и Telegram-интеграции. На этом этапе подтверждаем подключение базы и безопасный сценарий получения данных — без имитации ещё не разработанных модулей.</p></div>
+        <div class="intro-orbit" aria-hidden="true"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orbit-core">L</div><i class="orbit-dot"></i></div>
+      </section>
+
+      <section class="section-block">
+        <div class="section-heading"><div><div class="eyebrow">СОСТОЯНИЕ ИНФРАСТРУКТУРЫ</div><h2>Подключения</h2></div><span class="live-indicator" id="checkModeLabel"><i></i> LIVE CHECK</span></div>
+        <div class="status-grid">
+          <article class="status-card"><div class="status-card-head"><span class="status-icon database-icon">▤</span><span class="status-pill" id="dbPill">Проверка</span></div><h3>Cloudflare D1</h3><p id="dbText">Проверяем соединение с базой данных…</p><div class="status-foot"><span>Записей в базе</span><strong id="leadCount">—</strong></div></article>
+          <article class="status-card"><div class="status-card-head"><span class="status-icon telegram-icon">➤</span><span class="status-pill" id="tgPill">Проверка</span></div><h3>Telegram Bot API</h3><p id="tgText">Проверяем наличие конфигурации…</p><div class="status-foot"><span>Режим получения</span><strong>Webhook</strong></div></article>
+          <article class="status-card"><div class="status-card-head"><span class="status-icon worker-icon">⌘</span><span class="status-pill ok" id="workerPill">Активен</span></div><h3>Cloudflare Worker</h3><p id="workerText">Серверная точка входа отвечает на запросы.</p><div class="status-foot"><span>Версия</span><strong>0.1.2</strong></div></article>
+        </div>
+      </section>
+
+      <section class="section-block" id="telegram">
+        <div class="section-heading"><div><div class="eyebrow">ПОДКЛЮЧЕНИЕ ИСТОЧНИКА</div><h2>Telegram webhook</h2></div><span class="muted-note">Токены остаются на сервере</span></div>
+        <div class="setup-card">
+          <div class="setup-info"><div class="setup-step">01</div><div><h3>Зарегистрировать webhook</h3><p>Worker проверит токен бота через <code>getMe</code> и зарегистрирует защищённый webhook в Telegram. Секреты должны быть заранее добавлены в Worker Secrets в Cloudflare.</p></div></div>
+          <div class="setup-form"><label for="setupToken">Ключ настройки (SETUP_TOKEN)</label><div class="input-row"><input id="setupToken" type="password" autocomplete="off" placeholder="Введите ключ настройки"><button id="registerButton" class="button button-primary" type="button">Зарегистрировать</button></div><small>Ключ не сохраняется в браузере и очищается после запроса.</small></div>
+          <div class="notice"><span class="notice-mark">i</span><p>Webhook получает сообщения, отправленные самому боту. Новый лид записывается в базу только после явного согласия через кнопку в Telegram. Команда <code>/stop</code> отзывает согласие.</p></div>
+          <div id="setupResult" class="result-message" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section class="section-block lower-grid">
+        <article class="info-card"><div class="eyebrow">ПРИНЦИП СБОРА</div><h3>Сначала согласие — затем запись</h3><p>Пользователь открывает бота, нажимает <code>/start</code> и самостоятельно подтверждает сохранение профиля. Отказ не создаёт запись лида.</p><div class="flow"><span>Контакт</span><b>→</b><span>Согласие</span><b>→</b><span>База D1</span></div></article>
+        <article class="info-card muted-card"><div class="eyebrow">СЛЕДУЮЩАЯ КОНТРОЛЬНАЯ ТОЧКА</div><h3>Этап 2 · Инфраструктура</h3><p>Полный каркас проекта, миграционный механизм, единый API и согласованный layout интерфейса.</p><div class="progress-line"><span style="width:8.33%"></span></div><small>Этап 1 из 12</small></article>
+      </section>
+      <footer class="footer"><span>LEAD DATABASE MANAGER</span><span>Техническая сборка · 12.11.2026</span></footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
