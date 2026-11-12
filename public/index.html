@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#17191e">
+  <title>Lead Database Manager</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div id="auth-screen" class="auth-screen hidden">
+    <div class="auth-card">
+      <div class="brand-mark large"><span></span><span></span><span></span></div>
+      <div class="eyebrow">LEAD DATABASE MANAGER</div>
+      <h1>Вход в рабочее пространство</h1>
+      <p class="muted">Введите административный ключ, сохранённый в Cloudflare Worker Secrets. Ключ нужен для доступа к базе и операциям с лидами.</p>
+      <form id="auth-form">
+        <label for="admin-token">ADMIN_TOKEN</label>
+        <input id="admin-token" type="password" autocomplete="current-password" minlength="32" placeholder="Введите ключ доступа" required>
+        <button class="button primary full" type="submit">Открыть систему</button>
+      </form>
+      <div id="auth-message" class="inline-message" aria-live="polite"></div>
+      <div class="auth-foot"><span class="status-dot"></span> Защищённое соединение · данные остаются в Cloudflare D1</div>
+    </div>
+  </div>
+
+  <div id="app-shell" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><span></span><span></span><span></span></div>
+        <div><strong>Lead Database</strong><small>MANAGER · 0.2.0</small></div>
+      </div>
+      <div class="nav-caption">РАБОЧАЯ ОБЛАСТЬ</div>
+      <button class="nav-item active" data-page="dashboard"><span class="nav-icon">◫</span><span>Обзор</span></button>
+      <button class="nav-item" data-page="leads"><span class="nav-icon">▤</span><span>База лидов</span><span id="nav-leads-count" class="nav-count">—</span></button>
+      <button class="nav-item" data-page="segments"><span class="nav-icon">▦</span><span>Разделы</span></button>
+      <div class="nav-caption gap-top">УПРАВЛЕНИЕ</div>
+      <button class="nav-item" data-page="activity"><span class="nav-icon">◷</span><span>История операций</span></button>
+      <button class="nav-item" data-page="telegram"><span class="nav-icon">➤</span><span>Telegram</span></button>
+      <div class="sidebar-bottom">
+        <div class="connection-line"><i id="sidebar-db-dot" class="status-dot"></i><span id="sidebar-db-label">Проверка базы…</span></div>
+        <div class="sidebar-user"><div class="avatar">A</div><div><strong>Администратор</strong><small id="environment-label">Cloudflare D1</small></div><button id="logout-button" class="icon-button" title="Выйти">↪</button></div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div><div class="eyebrow">СИСТЕМА УПРАВЛЕНИЯ ЛИДАМИ</div><h1 id="page-title">Обзор</h1><p id="page-subtitle" class="topbar-subtitle">Сводная информация о базе и последних действиях</p></div>
+        <div class="topbar-actions"><span id="mode-badge" class="mode-badge"><i></i> LIVE</span><button id="top-add-lead" class="button primary">＋ <span>Добавить лида</span></button></div>
+      </header>
+      <div id="page-content" class="page-content"></div>
+      <footer class="app-footer"><span>LEAD DATABASE MANAGER</span><span>Рабочая версия · 0.2.0</span></footer>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

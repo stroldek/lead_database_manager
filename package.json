@@ -1,0 +1,13 @@
+{
+  "name": "lead-database-manager",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy --config ./wrangler.jsonc",
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

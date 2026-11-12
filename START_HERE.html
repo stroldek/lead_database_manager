@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark"><title>Lead Database Manager — запуск</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#17191e;color:#e5e9f0;font:15px/1.6 system-ui,Segoe UI,sans-serif;display:grid;place-items:center;padding:20px}.card{max-width:620px;width:100%;padding:30px;background:#252b33;border:1px solid #3b424d;border-radius:18px;box-shadow:8px 10px 30px #0005}.muted{color:#929ba8}.pill{display:inline-block;padding:4px 9px;border-radius:8px;background:#55482d;color:#e0c58e;font-size:11px;font-weight:700}.btn{display:inline-block;margin:10px 0;padding:11px 16px;background:#527f9c;color:#fff;text-decoration:none;border-radius:9px;font-weight:700}code{color:#b9d0e1;background:#1c2229;padding:2px 5px;border-radius:5px}li{margin:7px 0}h1{font-size:25px;margin:10px 0}h2{font-size:16px;margin-top:24px}.tip{padding:12px;border:1px solid #5a4d34;background:#3a3326;border-radius:10px;color:#d8c49a;font-size:13px}
+  </style>
+</head>
+<body><main class="card">
+  <span class="pill">v0.2.0 · DEMO + D1</span>
+  <h1>Lead Database Manager</h1>
+  <p class="muted">Открыть интерфейс и проверить сценарии без установки программ.</p>
+  <a class="btn" href="public/index.html">Открыть локальный DEMO</a>
+  <p class="tip">Локальный режим использует отдельные демонстрационные данные в браузере. Он не подключается к Cloudflare и не меняет настоящую базу.</p>
+  <h2>Для подключения настоящей базы</h2>
+  <ol><li>Опубликуйте содержимое архива через GitHub → Cloudflare Workers Builds.</li><li>Создайте D1 и выполните миграции <code>0001</code> и <code>0002</code> через SQL Console.</li><li>Подключите D1 binding с именем <code>DB</code>.</li><li>Добавьте секрет <code>ADMIN_TOKEN</code> в Worker.</li><li>Откройте опубликованный адрес и войдите с тем же ключом.</li></ol>
+  <p class="muted">Подробные шаги находятся в <code>docs/CLOUDFLARE_DEPLOYMENT.md</code>.</p>
+</main></body></html>

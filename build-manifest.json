@@ -1,0 +1,20 @@
+{
+  "product": "Lead Database Manager",
+  "version": "0.2.0",
+  "release_date": "2026-11-12",
+  "release_stage": "Core leads database and management API",
+  "runtime_dependencies": [],
+  "local_install_required": false,
+  "cloudflare": {
+    "worker_entry": "src/worker.js",
+    "static_assets": "public",
+    "d1_binding": "DB",
+    "d1_database_name": "lead-database-manager-db",
+    "automatic_d1_provisioning": true
+  },
+  "tests": {
+    "javascript": "14 passed",
+    "sqlite_migrations": "7 checks passed",
+    "api_integration": "CRUD, deduplication, segment membership, filtering and deletes passed"
+  }
+}

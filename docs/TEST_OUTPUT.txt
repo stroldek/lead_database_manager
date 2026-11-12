@@ -1,0 +1,103 @@
+TAP version 13
+# (node:1743) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: API end-to-end: creates, updates, lists, segments and deletes without duplicates
+ok 1 - API end-to-end: creates, updates, lists, segments and deletes without duplicates
+  ---
+  duration_ms: 57.187964
+  type: 'test'
+  ...
+# Subtest: API enforces admin token and validates Telegram IDs
+ok 2 - API enforces admin token and validates Telegram IDs
+  ---
+  duration_ms: 1.057294
+  type: 'test'
+  ...
+# Subtest: classifies Telegram updates
+ok 3 - classifies Telegram updates
+  ---
+  duration_ms: 1.171376
+  type: 'test'
+  ...
+# Subtest: accepts only private human messages
+ok 4 - accepts only private human messages
+  ---
+  duration_ms: 0.394611
+  type: 'test'
+  ...
+# Subtest: parses only supported commands
+ok 5 - parses only supported commands
+  ---
+  duration_ms: 1.855342
+  type: 'test'
+  ...
+# Subtest: validates webhook secret format and exact match
+ok 6 - validates webhook secret format and exact match
+  ---
+  duration_ms: 0.281762
+  type: 'test'
+  ...
+# Subtest: consent message explicitly describes data and includes opt-in/out buttons
+ok 7 - consent message explicitly describes data and includes opt-in/out buttons
+  ---
+  duration_ms: 0.34512
+  type: 'test'
+  ...
+# Subtest: health endpoint reports Worker, D1 and Telegram configuration
+ok 8 - health endpoint reports Worker, D1 and Telegram configuration
+  ---
+  duration_ms: 34.301371
+  type: 'test'
+  ...
+# Subtest: auth config endpoint does not disclose the admin secret
+ok 9 - auth config endpoint does not disclose the admin secret
+  ---
+  duration_ms: 0.696611
+  type: 'test'
+  ...
+# Subtest: admin token validation accepts only exact configured secret
+ok 10 - admin token validation accepts only exact configured secret
+  ---
+  duration_ms: 2.198579
+  type: 'test'
+  ...
+# Subtest: protected API rejects requests without admin token
+ok 11 - protected API rejects requests without admin token
+  ---
+  duration_ms: 0.897268
+  type: 'test'
+  ...
+# Subtest: protected API explains when admin token is not configured
+ok 12 - protected API explains when admin token is not configured
+  ---
+  duration_ms: 2.827724
+  type: 'test'
+  ...
+# Subtest: webhook rejects requests without Telegram secret header
+ok 13 - webhook rejects requests without Telegram secret header
+  ---
+  duration_ms: 5.544145
+  type: 'test'
+  ...
+# Subtest: webhook setup rejects an incorrect setup token before calling Telegram
+ok 14 - webhook setup rejects an incorrect setup token before calling Telegram
+  ---
+  duration_ms: 1.320499
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 354.424565
+PASS: both migrations apply in sequence
+PASS: all core management tables are created
+PASS: schema version registry is recorded
+PASS: telegram_id uniqueness is enforced
+PASS: one lead can belong to multiple segments
+PASS: deleting a segment does not delete its leads
+PASS: consent state remains independently stored
