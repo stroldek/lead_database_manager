@@ -9,6 +9,8 @@ import {
 } from './lib/telegram.js';
 import { handleApiRequest } from './lib/api.js';
 import { json } from './lib/http.js';
+import { mtprotoRoutes } from './lib/mtproto-api.js';
+export { TelegramSession } from './lib/mtproto.js';
 
 const WEBHOOK_PATH = '/api/telegram/webhook';
 
@@ -200,6 +202,15 @@ export default {
     const { pathname } = new URL(request.url);
     if (pathname === '/api/setup/telegram-webhook') return registerWebhook(request, env);
     if (pathname === WEBHOOK_PATH) return telegramWebhook(request, env);
+    if (pathname.startsWith('/api/mtproto/')) {
+      try {
+        const response = await mtprotoRoutes(request, env, pathname);
+        if (response) return response;
+      } catch (error) {
+        console.error('mtproto_request_failed', error?.message || 'unknown');
+        return json({ ok: false, error: 'mtproto_internal_error' }, 500);
+      }
+    }
     if (pathname.startsWith('/api/')) {
       try {
         const response = await handleApiRequest(request, env);
