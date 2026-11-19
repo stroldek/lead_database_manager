@@ -20,6 +20,8 @@ const state = {
   selected: new Set(),
   health: null,
   toastTimer: null,
+  mtprotoPollTimer: null,
+  mtprotoQrUrl: null,
 };
 
 const STATUS_LABELS = {
@@ -32,7 +34,7 @@ const PAGE_META = {
   leads: ['База лидов', 'Просмотр, поиск, редактирование и массовое управление записями'],
   segments: ['Разделы базы', 'Тематическая сегментация лидов без дублирования записей'],
   activity: ['История операций', 'Журнал действий с записями и разделами'],
-  telegram: ['Telegram', 'Настройка защищённого получения согласий через бота'],
+  telegram: ['Telegram', 'Подключение личного Telegram-аккаунта через Client API (MTProto)'],
 };
 
 function makeLocalId() {
@@ -511,7 +513,161 @@ async function loadActivity() {
   } catch (error) { renderError(error.message); }
 }
 function renderTelegram() {
-  $('#page-content').innerHTML = `<div class="grid telegram-layout"><section class="card telegram-card"><div class="panel-eyebrow">TELEGRAM BOT API</div><h2>Регистрация webhook</h2><p>Этот модуль принимает сообщения от пользователей, которые самостоятельно открыли вашего бота. Новый профиль сохраняется только после явного согласия через кнопку в Telegram.</p><div class="telegram-step"><div class="step-number">1</div><div><strong>Добавьте секреты в Cloudflare</strong><small>TELEGRAM_BOT_TOKEN, TELEGRAM_WEBHOOK_SECRET и SETUP_TOKEN. Секреты не должны попадать в GitHub или frontend.</small></div></div><div class="telegram-step"><div class="step-number">2</div><div><strong>Зарегистрируйте webhook</strong><small>Worker проверит бота через getMe и привяжет endpoint к текущему адресу приложения.</small></div></div><div class="telegram-step"><div class="step-number">3</div><div><strong>Проверьте согласие</strong><small>Откройте бота, отправьте /start и выберите «Согласен». Отзыв согласия — команда /stop.</small></div></div><div class="notice"><span class="notice-mark">!</span><p>Не используйте модуль для произвольного поиска пользователей или нежелательной рассылки. Бот не может первым начать личный диалог.</p></div></section><section class="card telegram-card"><div class="panel-eyebrow">НАСТРОЙКА СОЕДИНЕНИЯ</div><h2>Подключить бота</h2><form id="webhook-form"><div class="form-field"><label for="setup-token">SETUP_TOKEN</label><input id="setup-token" type="password" autocomplete="off" placeholder="Ключ настройки из Cloudflare" required></div><button class="button primary full" style="margin-top:12px" type="submit">Зарегистрировать webhook</button></form><div id="webhook-result" class="inline-message" style="margin-top:12px" aria-live="polite"></div><div class="panel-eyebrow" style="margin-top:26px">СТАТУС</div><div class="segment-list" style="margin-top:10px"><div class="segment-row"><span class="segment-color" style="background:var(--accent)"></span><div class="segment-row-main"><strong>Worker endpoint</strong><small>/api/telegram/webhook</small></div><span class="pill green">Активен</span></div><div class="segment-row"><span class="segment-color" style="background:var(--yellow)"></span><div class="segment-row-main"><strong>Telegram Bot API</strong><small>${state.health?.checks?.telegram === 'configured' ? 'Секреты добавлены' : 'Ожидает настройки секретов'}</small></div><span class="pill ${state.health?.checks?.telegram === 'configured'?'green':'yellow'}">${state.health?.checks?.telegram === 'configured'?'Настроен':'Не настроен'}</span></div></div></section></div>`;
+  if (state.mtprotoPollTimer) { clearInterval(state.mtprotoPollTimer); state.mtprotoPollTimer = null; }
+  state.mtprotoQrUrl = null;
+  $('#page-content').innerHTML = `
+    <div class="grid telegram-layout">
+      <section class="card telegram-card">
+        <div class="panel-eyebrow">TELEGRAM CLIENT API · MTPROTO</div>
+        <h2>Подключение личного аккаунта</h2>
+        <p>Авторизация через QR-код Telegram. После подтверждения приложение сохранит зашифрованную сессию в Durable Object Cloudflare. Код подтверждения и пароль 2FA в этой версии не запрашиваются.</p>
+        <div class="telegram-step"><div class="step-number">1</div><div><strong>Проверьте секреты Worker</strong><small>TELEGRAM_API_ID, TELEGRAM_API_HASH и MTPROTO_SESSION_KEY. Также нужен действующий ADMIN_TOKEN.</small></div></div>
+        <div class="telegram-step"><div class="step-number">2</div><div><strong>Создайте QR-код</strong><small>Нажмите «Начать авторизацию», затем отсканируйте QR-код в Telegram на устройстве, где аккаунт уже открыт: Настройки → Устройства → Подключить устройство.</small></div></div>
+        <div class="telegram-step"><div class="step-number">3</div><div><strong>Подтвердите вход</strong><small>После подтверждения статус изменится на «Подключён», а профиль аккаунта появится справа.</small></div></div>
+        <div class="notice"><span class="notice-mark">!</span><p>Это экспериментальный прототип. Совместимость долгоживущего MTProto-соединения с Cloudflare Durable Objects ещё требует эксплуатационных тестов. Не используйте его как единственный канал сбора данных.</p></div>
+      </section>
+      <section class="card telegram-card">
+        <div class="panel-eyebrow">СОСТОЯНИЕ СОЕДИНЕНИЯ</div>
+        <h2 id="mtproto-state-title">Проверка подключения…</h2>
+        <div id="mtproto-status" class="mtproto-status" aria-live="polite">Получаем состояние Telegram-сессии</div>
+        <div id="mtproto-qr-wrap" class="mtproto-qr-wrap hidden">
+          <div id="mtproto-qr" class="mtproto-qr" aria-label="QR-код для входа в Telegram"></div>
+          <a id="mtproto-qr-link" class="mtproto-deep-link" href="#" rel="noopener">Открыть ссылку Telegram</a>
+          <small id="mtproto-qr-expiry" class="muted"></small>
+        </div>
+        <div id="mtproto-account" class="mtproto-account hidden"></div>
+        <div class="mtproto-actions">
+          <button id="mtproto-start" class="button primary" data-action="mtproto-start">Начать авторизацию</button>
+          <button id="mtproto-reconnect" class="button quiet hidden" data-action="mtproto-reconnect">Переподключить сессию</button>
+          <button id="mtproto-refresh" class="button quiet" data-action="mtproto-refresh">Обновить статус</button>
+          <button id="mtproto-disconnect" class="button danger hidden" data-action="mtproto-disconnect">Отключить сессию</button>
+        </div>
+        <div id="mtproto-error" class="inline-message" aria-live="polite"></div>
+      </section>
+    </div>`;
+  refreshMtprotoStatus();
+}
+
+function setMtprotoMessage(message, isError = false) {
+  const node = $('#mtproto-error');
+  if (!node) return;
+  node.textContent = message || '';
+  node.style.color = isError ? 'var(--red)' : 'var(--muted)';
+}
+
+function renderMtprotoQr(url, expiresAt) {
+  const wrap = $('#mtproto-qr-wrap');
+  const target = $('#mtproto-qr');
+  if (!wrap || !target) return;
+  if (!url) {
+    wrap.classList.add('hidden');
+    target.innerHTML = '';
+    state.mtprotoQrUrl = null;
+    return;
+  }
+  wrap.classList.remove('hidden');
+  $('#mtproto-qr-link').href = url;
+  $('#mtproto-qr-expiry').textContent = expiresAt ? `QR действителен до ${dateLabel(expiresAt)}` : '';
+  if (state.mtprotoQrUrl === url) return;
+  state.mtprotoQrUrl = url;
+  target.innerHTML = '';
+  if (typeof window.QRCode === 'function') {
+    new window.QRCode(target, { text: url, width: 208, height: 208, colorDark: '#111820', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel?.M || 0 });
+  } else {
+    target.innerHTML = '<div class="mtproto-qr-fallback">Библиотека QR не загрузилась. Используйте ссылку Telegram ниже.</div>';
+  }
+}
+
+async function refreshMtprotoStatus() {
+  if (state.demo) {
+    $('#mtproto-state-title').textContent = 'Недоступно в демо-режиме';
+    $('#mtproto-status').textContent = 'Откройте опубликованное приложение Cloudflare и войдите с ADMIN_TOKEN, чтобы управлять MTProto-сессией.';
+    $('#mtproto-start').disabled = true;
+    $('#mtproto-refresh').disabled = true;
+    return;
+  }
+  try {
+    const data = await api('/api/mtproto/status');
+    const current = data.state || 'disconnected';
+    const labels = {
+      disconnected: 'Не подключён',
+      qr_pending: 'Ожидает подтверждения QR',
+      authorized: 'Подключён',
+      session_saved: 'Сессия сохранена',
+      authorization_failed: 'Ошибка авторизации',
+      reconnect_failed: 'Ошибка переподключения',
+      error: 'Ошибка подключения',
+    };
+    $('#mtproto-state-title').textContent = labels[current] || current;
+    $('#mtproto-status').textContent = current === 'qr_pending'
+      ? 'Откройте Telegram на уже авторизованном устройстве и подтвердите вход по QR-коду.'
+      : current === 'session_saved' ? 'Сессия сохранена. Выполните переподключение, чтобы проверить доступ к аккаунту.'
+      : current === 'authorized' ? 'Telegram-аккаунт успешно авторизован.'
+      : current === 'disconnected' ? 'Telegram-аккаунт пока не подключён.'
+      : 'Проверьте секреты Worker и журнал ошибок Cloudflare.';
+    renderMtprotoQr(data.qr_url, data.qr_expires_at);
+    const connected = ['authorized','session_saved'].includes(current);
+    $('#mtproto-start').classList.toggle('hidden', connected || current === 'qr_pending');
+    $('#mtproto-start').disabled = current === 'qr_pending';
+    $('#mtproto-reconnect').classList.toggle('hidden', current !== 'session_saved');
+    $('#mtproto-disconnect').classList.toggle('hidden', !connected && current !== 'qr_pending');
+    const accountNode = $('#mtproto-account');
+    if (connected) {
+      try {
+        const accountData = await api('/api/mtproto/account');
+        const account = accountData.account || {};
+        accountNode.innerHTML = `<strong>Аккаунт Telegram</strong><span>${escapeHtml([account.firstName, account.username ? '@'+account.username : null].filter(Boolean).join(' · ') || 'Профиль подключён')}</span><small>ID: ${escapeHtml(account.id || '—')}</small>`;
+        accountNode.classList.remove('hidden');
+      } catch { accountNode.classList.add('hidden'); }
+    } else accountNode.classList.add('hidden');
+    if (current === 'qr_pending') {
+      if (!state.mtprotoPollTimer) state.mtprotoPollTimer = setInterval(() => refreshMtprotoStatus().catch(() => {}), 1800);
+    } else if (state.mtprotoPollTimer) {
+      clearInterval(state.mtprotoPollTimer);
+      state.mtprotoPollTimer = null;
+    }
+    setMtprotoMessage('');
+  } catch (error) {
+    $('#mtproto-state-title').textContent = 'Статус недоступен';
+    $('#mtproto-status').textContent = 'Worker не подтвердил состояние MTProto-сессии.';
+    setMtprotoMessage(error.message, true);
+  }
+}
+
+async function startMtprotoLogin() {
+  setMtprotoMessage('');
+  $('#mtproto-start').disabled = true;
+  try {
+    await api('/api/mtproto/qr/start', { method: 'POST', body: JSON.stringify({}) });
+    await refreshMtprotoStatus();
+    if (!state.mtprotoPollTimer) state.mtprotoPollTimer = setInterval(() => refreshMtprotoStatus().catch(() => {}), 1800);
+  } catch (error) {
+    setMtprotoMessage(error.message, true);
+    $('#mtproto-start').disabled = false;
+  }
+}
+
+async function reconnectMtproto() {
+  setMtprotoMessage('');
+  $('#mtproto-reconnect').disabled = true;
+  try {
+    await api('/api/mtproto/session/reconnect', { method: 'POST', body: JSON.stringify({}) });
+    await refreshMtprotoStatus();
+  } catch (error) { setMtprotoMessage(error.message, true); }
+  finally { $('#mtproto-reconnect').disabled = false; }
+}
+
+async function disconnectMtproto() {
+  if (!confirm('Удалить локально сохранённую Telegram-сессию? Для полного отзыва устройства дополнительно откройте Telegram → Настройки → Устройства.')) return;
+  $('#mtproto-disconnect').disabled = true;
+  try {
+    await api('/api/mtproto/disconnect', { method: 'POST', body: JSON.stringify({}) });
+    if (state.mtprotoPollTimer) clearInterval(state.mtprotoPollTimer);
+    state.mtprotoPollTimer = null;
+    await refreshMtprotoStatus();
+    showToast('Локальная Telegram-сессия удалена.');
+  } catch (error) { setMtprotoMessage(error.message, true); }
+  finally { $('#mtproto-disconnect').disabled = false; }
 }
 
 function closeModal() { $('#modal-root').innerHTML = ''; }
@@ -554,6 +710,10 @@ $('#app-shell').addEventListener('click', async (event) => {
     else if (action === 'apply-bulk') await applyBulk();
     else if (action === 'clear-selection') { state.selected.clear(); await loadLeads(); }
     else if (action === 'retry') navigate(state.page);
+    else if (action === 'mtproto-start') await startMtprotoLogin();
+    else if (action === 'mtproto-refresh') await refreshMtprotoStatus();
+    else if (action === 'mtproto-reconnect') await reconnectMtproto();
+    else if (action === 'mtproto-disconnect') await disconnectMtproto();
     else if (action === 'open-segment-leads') { state.segmentId = id; state.leadsPage = 1; navigate('leads'); }
   } catch (error) { showToast(error.message || 'Не удалось выполнить действие.'); }
 });
