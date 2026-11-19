@@ -12,7 +12,7 @@ All endpoints require the existing `x-admin-token` header.
 - `POST /api/mtproto/session/reconnect` — restores the saved StringSession and calls getMe.
 - `POST /api/mtproto/disconnect` — disconnects and deletes the encrypted session.
 
-Open the QR deep link on a device with Telegram already logged in, or encode the returned `tg://login?token=...` as a QR image in the UI.
+The Telegram page in the application renders the returned deep link as a QR code in the browser and polls status while authorization is pending. The deep link is also shown as a fallback.
 
 ## Cloudflare secrets and bindings
 
@@ -42,6 +42,7 @@ The session key must never be stored in D1, Git, frontend storage, request logs,
 ### B. QR lifecycle
 - [ ] `POST /api/mtproto/qr/start` returns 202.
 - [ ] Status exposes a valid `tg://login?token=...` deep link within 10 seconds.
+- [ ] The Telegram page displays the QR code and fallback deep link.
 - [ ] QR can be scanned by Telegram on a second, already-authorized device.
 - [ ] Telegram confirmation completes without entering a phone code.
 - [ ] Status changes to `authorized`; account endpoint returns the expected account.
@@ -74,6 +75,7 @@ The session key must never be stored in D1, Git, frontend storage, request logs,
 ## Known prototype limitations
 
 - QR flow is experimental; no manual phone-code/2FA fallback in this spike.
+- QR rendering uses the qrcodejs browser library loaded from cdnjs; if the CDN is unavailable, the direct Telegram deep link remains available.
 - This spike does not yet monitor chats or process updates.
 - Durable Object eviction during QR login interrupts that in-memory flow.
 - The live GramJS connection may not survive Cloudflare runtime constraints; passing build tests is not enough.
