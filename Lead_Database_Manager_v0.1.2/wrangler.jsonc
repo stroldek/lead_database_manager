@@ -20,5 +20,24 @@
   ],
   "observability": {
     "enabled": true
-  }
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "TELEGRAM_SESSION",
+        "class_name": "TelegramSession"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-mtproto-session",
+      "new_sqlite_classes": [
+        "TelegramSession"
+      ]
+    }
+  ]
 }
